@@ -1,3 +1,29 @@
-.vs/
+# Build mappák
 bin/
 obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Debug/Release
+Debug/
+Release/
+
+# Log fájlok
+*.log
+
+# NuGet
+packages/
+*.nupkg
+
+# Ideiglenes fájlok
+*.tmp
+*.cache
+
+# OS fájlok
+.DS_Store
+Thumbs.db
