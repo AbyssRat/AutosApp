@@ -1,7 +1,7 @@
 import express from "express";
 import mysql from "mysql2/promise";
 import cors from "cors";
-import pool from "./db.js";
+import db from "./db.js";
 
 const app = express();
 app.use(cors());
