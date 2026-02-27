@@ -1,10 +1,12 @@
-import mysql from 'mysql2/promise';
+const mysql = require("mysql2/promise");
 
-const db = mysql.createPool({
-    host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'autokolcsonzes',
+const pool = mysql.createPool({
+  host: "localhost",
+  user: "root",
+  password: "", // ide a saját jelszavad
+  database: "autokolcsonzes",
+  waitForConnections: true,
+  connectionLimit: 10
 });
 
-export default db;
+module.exports = pool;
