@@ -1,124 +1,164 @@
 import express from "express";
-const app = express();
-app.use(express.json());
+import mysql from "mysql2/promise";
+import cors from "cors";
+import pool from "./db.js";
 
-import pool from "./db";
+const app = express();
+app.use(cors());
+app.use(express.json());
 
 
 /* ===============================
    AUTÓK
 ================================*/
 
-app.get("/autok", (req, res) => {
-  res.json(autok);
+// GET /autok
+app.get("/autok", async (req, res) => {
+  const [rows] = await db.query("SELECT * FROM Auto");
+  res.json(rows);
 });
 
-app.get("/autok/:rendszam", (req, res) => {
-  const auto = autok.find(a => a.rendszam === req.params.rendszam);
-  if (!auto) return res.status(404).json({ error: "Az autó nem található." });
-  res.json(auto);
+// GET /autok/:rendszam
+app.get("/autok/:rendszam", async (req, res) => {
+  const [rows] = await db.query(
+    "SELECT * FROM Auto WHERE rendszam = ?",
+    [req.params.rendszam]
+  );
+
+  if (rows.length === 0)
+    return res.status(404).json({ error: "Az autó nem található." });
+
+  res.json(rows[0]);
 });
 
 /* ===============================
    ÜGYFELEK
 ================================*/
 
-app.get("/ugyfelek", (req, res) => {
-  res.json(ugyfelek);
+app.get("/ugyfelek", async (req, res) => {
+  const [rows] = await db.query("SELECT * FROM Ugyfel");
+  res.json(rows);
 });
 
-app.get("/ugyfelek/:nev", (req, res) => {
-  const ugyfel = ugyfelek.find(u => u.nev === req.params.nev);
-  if (!ugyfel) return res.status(404).json({ error: "Az ügyfél nem található." });
-  res.json(ugyfel);
+app.get("/ugyfelek/:nev", async (req, res) => {
+  const [rows] = await db.query(
+    "SELECT * FROM Ugyfel WHERE nev = ?",
+    [req.params.nev]
+  );
+
+  if (rows.length === 0)
+    return res.status(404).json({ error: "Az ügyfél nem található." });
+
+  res.json(rows[0]);
 });
 
 /* ===============================
    KÖLCSÖNZŐHELYEK
 ================================*/
 
-app.get("/kolcsonzohelyek", (req, res) => {
-  res.json(kolcsonzohelyek);
+app.get("/kolcsonzohelyek", async (req, res) => {
+  const [rows] = await db.query("SELECT * FROM Kolcsonzo");
+  res.json(rows);
 });
 
-app.get("/kolcsonzohelyek/:id", (req, res) => {
-  const hely = kolcsonzohelyek.find(h => h.id == req.params.id);
-  if (!hely) return res.status(404).json({ error: "A telephely nem található." });
-  res.json(hely);
+app.get("/kolcsonzohelyek/:id", async (req, res) => {
+  const [rows] = await db.query(
+    "SELECT * FROM Kolcsonzo WHERE id = ?",
+    [req.params.id]
+  );
+
+  if (rows.length === 0)
+    return res.status(404).json({ error: "A telephely nem található." });
+
+  res.json(rows[0]);
 });
 
 /* ===============================
    KÖLCSÖNZÉSEK
 ================================*/
 
-app.get("/kolcsonzesek", (req, res) => {
-  res.json(kolcsonzesek);
+// GET /kolcsonzesek (JOIN-nal szépen)
+app.get("/kolcsonzesek", async (req, res) => {
+  const [rows] = await db.query(`
+    SELECT 
+      k.id,
+      u.nev AS ugyfel,
+      a.rendszam,
+      a.automarka,
+      a.automodell,
+      a.napi_dij,
+      k.mettol,
+      k.meddig
+    FROM Kolcsonzes k
+    JOIN Auto a ON k.auto_id = a.id
+    JOIN Ugyfel u ON k.ugyfel_id = u.id
+  `);
+
+  res.json(rows);
 });
 
-app.get("/kolcsonzesek/:id", (req, res) => {
-  const kolcsonzes = kolcsonzesek.find(k => k.id == req.params.id);
-  if (!kolcsonzes)
+// GET /kolcsonzesek/:id
+app.get("/kolcsonzesek/:id", async (req, res) => {
+  const [rows] = await db.query(
+    "SELECT * FROM Kolcsonzes WHERE id = ?",
+    [req.params.id]
+  );
+
+  if (rows.length === 0)
     return res.status(404).json({ error: "A kölcsönzés nem található." });
 
-  res.json(kolcsonzes);
+  res.json(rows[0]);
 });
 
-app.get("/kolcsonzesek/ugyfel/:nev", (req, res) => {
-  const ugyfel = ugyfelek.find(u => u.nev === req.params.nev);
-  if (!ugyfel)
-    return res.status(404).json({ error: "Nincs ilyen ügyfél." });
+// GET /kolcsonzesek/ugyfel/:nev
+app.get("/kolcsonzesek/ugyfel/:nev", async (req, res) => {
+  const [rows] = await db.query(`
+    SELECT k.*
+    FROM Kolcsonzes k
+    JOIN Ugyfel u ON k.ugyfel_id = u.id
+    WHERE u.nev = ?
+  `, [req.params.nev]);
 
-  const eredmeny = kolcsonzesek.filter(k => k.ugyfel_id === ugyfel.id);
-  res.json(eredmeny);
+  if (rows.length === 0)
+    return res.status(404).json({ error: "Nincs ilyen ügyfél vagy nincs kölcsönzése." });
+
+  res.json(rows);
 });
 
 /* ===============================
    POST /kolcsonzesek
 ================================*/
 
-app.post("/kolcsonzesek", (req, res) => {
+app.post("/kolcsonzesek", async (req, res) => {
   const { auto_id, kolcsonzo_id, ugyfel_id, mettol, meddig } = req.body;
 
-  // 🔎 Validáció
-  if (!auto_id || !kolcsonzo_id || !ugyfel_id || !mettol || !meddig) {
+  if (!auto_id || !kolcsonzo_id || !ugyfel_id || !mettol || !meddig)
     return res.status(400).json({ error: "Hiányzó adatok." });
-  }
 
-  const auto = autok.find(a => a.id == auto_id);
-  if (!auto)
-    return res.status(404).json({ error: "Az autó nem található." });
-
-  const ugyfel = ugyfelek.find(u => u.id == ugyfel_id);
-  if (!ugyfel)
-    return res.status(404).json({ error: "Az ügyfél nem található." });
-
-  const kolcsonzo = kolcsonzohelyek.find(k => k.id == kolcsonzo_id);
-  if (!kolcsonzo)
-    return res.status(404).json({ error: "A kölcsönzőhely nem található." });
-
-  if (new Date(meddig) <= new Date(mettol)) {
+  if (new Date(meddig) <= new Date(mettol))
     return res.status(400).json({ error: "Hibás dátumtartomány." });
+
+  try {
+    const [result] = await db.query(
+      `INSERT INTO Kolcsonzes (auto_id, kolcsonzo_id, ugyfel_id, mettol, meddig)
+       VALUES (?, ?, ?, ?, ?)`,
+      [auto_id, kolcsonzo_id, ugyfel_id, mettol, meddig]
+    );
+
+    res.status(201).json({
+      message: "Sikeres hozzáadás",
+      id: result.insertId
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: "Adatbázis hiba", details: err.message });
   }
-
-  const ujKolcsonzes = {
-    id: kolcsonzesek.length + 1,
-    auto_id,
-    kolcsonzo_id,
-    ugyfel_id,
-    mettol,
-    meddig
-  };
-
-  kolcsonzesek.push(ujKolcsonzes);
-
-  res.status(201).json(ujKolcsonzes);
 });
 
 /* ===============================
-   SERVER INDÍTÁS
+   SERVER
 ================================*/
 
-const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`Szerver fut: http://localhost:${PORT}`);
+app.listen(3000, () => {
+  console.log("Szerver fut: http://localhost:3000");
 });
