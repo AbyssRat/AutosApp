@@ -1,8 +1,9 @@
-const express = require("express");
-const router = express.Router();
-const controller = require("../controllers/autokController");
+import express from "express";
+import router from "express";
+import controller from "../controllers/autokController.js";
 
-router.get("/", controller.getAutok);
-router.get("/:rendszam", controller.getAutoByRendszam);
 
-module.exports = router;
+Autorouter.get("/", controller.getAutok);
+Autorouter.get("/:rendszam", controller.getAutoByRendszam);
+
+export default Autorouter;

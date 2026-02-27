@@ -1,4 +1,4 @@
-const db = require("../db");
+import db from "../../db.js";
 
 exports.getAutok = async (req, res) => {
   const [rows] = await db.query("SELECT * FROM Auto");

@@ -1,4 +1,4 @@
-const db = require("../db");
+import db from "../../db.js";
 
 exports.getUgyfelek = async (req, res) => {
   const [rows] = await db.query("SELECT * FROM Ugyfel");
